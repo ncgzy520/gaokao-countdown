@@ -1,0 +1,9 @@
+version: '3.8'
+
+services:
+  gaokao-countdown:
+    build: .
+    container_name: gaokao-countdown-web
+    restart: always
+    ports:
+      - "80:80"

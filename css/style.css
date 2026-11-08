@@ -1,0 +1,643 @@
+/* ==========================================================================
+   高考倒计时 - 现代 3D 日历翻页与多图床风景美学系统
+   ========================================================================== */
+
+:root {
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --gold-gradient: linear-gradient(135deg, #fef08a 0%, #fde047 30%, #fbbf24 60%, #f59e0b 100%);
+  --gold-glow: 0 0 25px rgba(251, 191, 36, 0.45);
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: var(--font-sans);
+  background-color: #020617;
+  color: #f8fafc;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ==========================================================================
+   1. 背景壁纸图层与平滑过渡遮罩
+   ========================================================================== */
+#wallpaper-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+}
+
+.wallpaper-layer {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+  transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1), transform 1.2s ease-out;
+  transform: scale(1.02);
+}
+
+.wallpaper-layer.active {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.wallpaper-layer.inactive {
+  opacity: 0;
+  transform: scale(1.03);
+}
+
+/* 视觉自适应暗角与渐变蒙版（保障前景文字与 3D 日历卡在任意亮色图床壁纸上清晰高对比） */
+#vignette-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  background: radial-gradient(circle at center, rgba(2, 6, 23, 0.25) 0%, rgba(2, 6, 23, 0.65) 75%, rgba(2, 6, 23, 0.85) 100%);
+  pointer-events: none;
+}
+
+/* ==========================================================================
+   2. 主界面应用容器 (Flex 三段式垂直流)
+   ========================================================================== */
+#app {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 1.25rem 1.5rem;
+}
+
+/* ==========================================================================
+   3. 顶部导航与控制工具栏 (Header)
+   ========================================================================== */
+.site-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+/* 玻璃拟态胶囊通用类 */
+.glass-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.85rem;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 9999px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.35);
+  font-size: 0.85rem;
+  color: #f1f5f9;
+  transition: all 0.25s ease;
+}
+
+.glass-pill:hover {
+  background: rgba(30, 41, 59, 0.7);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.action-btn {
+  background: rgba(255, 255, 255, 0.12);
+  border: none;
+  border-radius: 6px;
+  color: #fff;
+  padding: 0.2rem 0.45rem;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.action-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.icon-btn {
+  background: transparent;
+  border: none;
+  color: #cbd5e1;
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  transition: all 0.2s;
+}
+
+.icon-btn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* 右上角外链 MP3 音乐播放器胶囊 */
+.music-player-pill {
+  position: relative;
+}
+
+.music-play-toggle {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #fbbf24;
+  border: none;
+  color: #0f172a;
+  font-size: 0.75rem;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.2s, background 0.2s;
+}
+
+.music-play-toggle:hover {
+  transform: scale(1.08);
+  background: #f59e0b;
+}
+
+.music-title-wrap {
+  max-width: 170px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.music-visualizer {
+  display: none;
+  align-items: flex-end;
+  gap: 2px;
+  height: 12px;
+}
+
+.music-visualizer.playing {
+  display: inline-flex;
+}
+
+.music-bar {
+  width: 2px;
+  background: #fbbf24;
+  border-radius: 1px;
+}
+
+.bar-1 { animation: eqBounce 0.7s infinite ease-in-out; }
+.bar-2 { animation: eqBounce 0.5s infinite ease-in-out 0.15s; }
+.bar-3 { animation: eqBounce 0.8s infinite ease-in-out 0.3s; }
+
+@keyframes eqBounce {
+  0%, 100% { height: 3px; }
+  50% { height: 12px; }
+}
+
+/* ==========================================================================
+   4. 中心主视觉区域：祝金榜题名 + 主标题 + 3D 日历翻页钟
+   ========================================================================== */
+.main-stage {
+  margin: auto 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 1rem 0;
+}
+
+/* 4.1 独立无边框「祝金榜题名」铭牌 */
+.blessing-text-standalone {
+  font-size: 1.15rem;
+  letter-spacing: 0.45em;
+  font-weight: 800;
+  padding-left: 0.45em; /* 抵消末字 letter-spacing */
+  margin-bottom: 0.65rem;
+  background: linear-gradient(135deg, #fef08a 0%, #fbbf24 45%, #f59e0b 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.85)) drop-shadow(0 0 16px rgba(251, 191, 36, 0.45));
+}
+
+.blessing-symbol {
+  font-size: 0.85rem;
+  vertical-align: middle;
+  opacity: 0.9;
+}
+
+/* 4.2 主标题：“距离 2027 高考仅剩” */
+.countdown-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.65rem;
+  margin-bottom: 1.75rem;
+}
+
+.countdown-prefix,
+.countdown-suffix {
+  font-size: 1.65rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: #ffffff;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.85), 0 1px 3px rgba(0, 0, 0, 0.95);
+}
+
+.countdown-year-giant {
+  font-family: var(--font-sans);
+  font-size: 5rem;
+  line-height: 1;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  background: var(--gold-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 4px 18px rgba(0, 0, 0, 0.9)) drop-shadow(0 0 35px rgba(251, 191, 36, 0.55));
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.countdown-year-giant:hover {
+  transform: scale(1.03);
+}
+
+/* 4.3 3D 机械日历翻页时钟网格 (Flip Clock) */
+.flip-clock-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.25rem;
+  width: 100%;
+  max-width: 640px;
+  perspective: 1200px;
+}
+
+.flip-unit-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.flip-unit {
+  position: relative;
+  width: 100%;
+  height: 100px;
+  border-radius: 14px;
+  perspective: 700px;
+  box-shadow: 0 16px 36px -8px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+
+/* 顶部日历挂环金属部件 */
+.calendar-ring-left,
+.calendar-ring-right {
+  position: absolute;
+  top: -6px;
+  width: 8px;
+  height: 13px;
+  border-radius: 4px;
+  background: linear-gradient(180deg, #cbd5e1 0%, #64748b 60%, #334155 100%);
+  z-index: 15;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
+}
+.calendar-ring-left { left: 20%; }
+.calendar-ring-right { right: 20%; }
+
+/* 中轴折痕已根据需求完全移除，确保文字 100% 清晰不被横线遮挡 */
+.calendar-hinge {
+  display: none !important;
+}
+
+/* 卡片切面（上下两半） */
+.card-face {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 50%;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 2.85rem;
+  font-weight: 900;
+  line-height: 100px;
+  letter-spacing: -0.04em;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+/* 深色模式（默认质感） */
+.upper-face {
+  top: 0;
+  border-top-left-radius: 14px;
+  border-top-right-radius: 14px;
+  background: linear-gradient(180deg, rgba(30, 41, 59, 0.94) 0%, rgba(15, 23, 42, 0.98) 100%);
+  color: #f8fafc;
+  align-items: flex-start;
+  border-bottom: none;
+}
+
+.lower-face {
+  bottom: 0;
+  border-bottom-left-radius: 14px;
+  border-bottom-right-radius: 14px;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.94) 100%);
+  color: #e2e8f0;
+  align-items: flex-end;
+}
+
+/* 秒数强调色 */
+.sec-card .upper-face,
+.sec-card .lower-face {
+  color: #fbbf24;
+}
+
+/* 浅色日历卡片模式 */
+.light-theme .upper-face {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.97) 0%, rgba(241, 245, 249, 0.98) 100%);
+  color: #0f172a;
+  border-bottom: none;
+}
+.light-theme .lower-face {
+  background: linear-gradient(180deg, rgba(241, 245, 249, 0.98) 0%, rgba(255, 255, 255, 0.97) 100%);
+  color: #1e293b;
+}
+.light-theme .sec-card .upper-face,
+.light-theme .sec-card .lower-face {
+  color: #d97706;
+}
+
+/* 翻页动画动态层 */
+.flap-upper {
+  z-index: 5;
+  transform-origin: 50% 100%;
+}
+
+.flap-lower {
+  z-index: 6;
+  transform-origin: 50% 0%;
+  transform: rotateX(90deg);
+}
+
+.flipping .flap-upper {
+  animation: flipDownUpper 0.3s ease-in forwards;
+}
+
+.flipping .flap-lower {
+  animation: flipDownLower 0.3s ease-out 0.28s forwards;
+}
+
+@keyframes flipDownUpper {
+  0% {
+    transform: rotateX(0deg);
+    filter: brightness(1);
+  }
+  100% {
+    transform: rotateX(-90deg);
+    filter: brightness(0.5);
+  }
+}
+
+@keyframes flipDownLower {
+  0% {
+    transform: rotateX(90deg);
+    filter: brightness(1.25);
+  }
+  100% {
+    transform: rotateX(0deg);
+    filter: brightness(1);
+  }
+}
+
+/* 时间标签徽标（天 / 时 / 分 / 秒） */
+.unit-label {
+  margin-top: 0.65rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: rgba(255, 255, 255, 0.9);
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.85);
+}
+
+.sec-label {
+  color: #fbbf24;
+}
+
+/* ==========================================================================
+   5. 底部正中无边框励志名言 (Quotes)
+   ========================================================================== */
+.site-footer {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding-bottom: 0.5rem;
+}
+
+.borderless-quote-wrap {
+  cursor: pointer;
+  max-width: 720px;
+  padding: 0.5rem 1rem;
+  transition: transform 0.2s ease, opacity 0.3s ease;
+}
+
+.borderless-quote-wrap:hover {
+  transform: translateY(-2px);
+}
+
+.quote-sentence {
+  font-size: 1.15rem;
+  font-weight: 600;
+  line-height: 1.6;
+  letter-spacing: 0.08em;
+  color: #ffffff;
+  /* 多层高清文本阴影，确保在任何风景图床明暗背景上 100% 锐利高对比 */
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.95), 0 1px 4px rgba(0, 0, 0, 0.9);
+  transition: opacity 0.25s ease;
+}
+
+.quote-author {
+  font-size: 0.82rem;
+  margin-top: 0.4rem;
+  color: rgba(255, 255, 255, 0.82);
+  letter-spacing: 0.15em;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.95), 0 1px 3px rgba(0, 0, 0, 0.9);
+  transition: opacity 0.25s ease;
+}
+
+.quote-refresh-hint {
+  opacity: 0.5;
+  margin-left: 0.35rem;
+  transition: opacity 0.2s;
+}
+
+.borderless-quote-wrap:hover .quote-refresh-hint {
+  opacity: 1;
+}
+
+/* ==========================================================================
+   6. 模态弹窗与面板 (设置与自定义图床 URL 弹窗)
+   ========================================================================== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+
+.modal-overlay.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.modal-card {
+  width: 100%;
+  max-width: 480px;
+  background: rgba(15, 23, 42, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 16px;
+  padding: 1.5rem;
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.6);
+  color: #f8fafc;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.25rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 0.75rem;
+}
+
+.modal-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #fbbf24;
+}
+
+.form-group {
+  margin-bottom: 1.15rem;
+}
+
+.form-label {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: #cbd5e1;
+  margin-bottom: 0.4rem;
+}
+
+.form-input, .form-select {
+  width: 100%;
+  padding: 0.55rem 0.75rem;
+  background: rgba(30, 41, 59, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  color: #f8fafc;
+  font-size: 0.85rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.form-input:focus, .form-select:focus {
+  border-color: #fbbf24;
+}
+
+.btn-primary {
+  width: 100%;
+  padding: 0.65rem;
+  background: #fbbf24;
+  border: none;
+  border-radius: 8px;
+  color: #0f172a;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+}
+
+.btn-primary:hover {
+  background: #f59e0b;
+}
+
+/* ==========================================================================
+   7. 移动端与不同尺寸屏幕响应式适配 (Responsive)
+   ========================================================================== */
+@media (max-width: 640px) {
+  #app {
+    padding: 1rem 0.75rem;
+  }
+
+  .site-header {
+    flex-wrap: wrap;
+  }
+
+  .blessing-text-standalone {
+    font-size: 0.95rem;
+    letter-spacing: 0.35em;
+  }
+
+  .countdown-prefix,
+  .countdown-suffix {
+    font-size: 1.25rem;
+    letter-spacing: 0.1em;
+  }
+
+  .countdown-year-giant {
+    font-size: 3.6rem;
+  }
+
+  .flip-clock-grid {
+    gap: 0.55rem;
+  }
+
+  .flip-unit {
+    height: 72px;
+    border-radius: 10px;
+  }
+
+  .card-face {
+    font-size: 2.1rem;
+    line-height: 72px;
+  }
+
+  .unit-label {
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+  }
+
+  .quote-sentence {
+    font-size: 0.98rem;
+  }
+
+  .quote-author {
+    font-size: 0.75rem;
+  }
+
+  .music-title-wrap {
+    max-width: 110px;
+  }
+}

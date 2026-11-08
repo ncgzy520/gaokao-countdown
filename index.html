@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>2027 高考倒计时 · 祝金榜题名</title>
+  <meta name="description" content="极简大气的高考倒计时网站，支持3D日历翻页钟、多风景图床壁纸切换、无边框励志名言与外链MP3陪伴音乐。">
+  <!-- 引入样式表 -->
+  <link rel="stylesheet" href="css/style.css">
+  <!-- 网页图标 (采用 SVG 内嵌，无需外部额外文件) -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎓</text></svg>">
+</head>
+<body>
+
+  <!-- 1. 背景壁纸舞台 (双图层平滑淡入淡出) -->
+  <div id="wallpaper-stage">
+    <div id="layer-a" class="wallpaper-layer active"></div>
+    <div id="layer-b" class="wallpaper-layer inactive"></div>
+  </div>
+
+  <!-- 2. 暗角对比度蒙版层 (保证前景文字在任意风景图床壁纸上清晰高对比) -->
+  <div id="vignette-overlay"></div>
+
+  <!-- 3. 主界面应用容器 -->
+  <div id="app">
+
+    <!-- 3.1 顶部导航与快捷控制栏 -->
+    <header class="site-header">
+      <!-- 左侧：多图床源切换胶囊 -->
+      <div class="glass-pill">
+        <span class="icon-btn" style="width:auto;height:auto;cursor:default;">🖼️</span>
+        <span id="current-source-label">必应每日 4K 壁纸</span>
+        <button id="next-source-btn" class="action-btn" title="切换至下一个图床源">换源 ⟳</button>
+        <button id="refresh-wp-btn" class="action-btn" title="在当前图床源换一张壁纸">换一张 ↻</button>
+        <button id="open-settings-btn" class="icon-btn" title="自定义图床与设置">⚙</button>
+      </div>
+
+      <!-- 右侧：外链 MP3 悬浮播放器与辅助工具 -->
+      <div style="display: flex; align-items: center; gap: 0.65rem;">
+        <!-- 外链 MP3 音乐胶囊 -->
+        <div class="glass-pill music-player-pill">
+          <button id="music-play-btn" class="music-play-toggle" title="播放 / 暂停 (快捷键: 空格)">▶</button>
+          <div class="music-title-wrap">
+            <span id="music-title">加载歌单中...</span>
+          </div>
+          <!-- 律动波形 -->
+          <div id="music-visualizer" class="music-visualizer">
+            <div class="music-bar bar-1"></div>
+            <div class="music-bar bar-2"></div>
+            <div class="music-bar bar-3"></div>
+          </div>
+          <button id="music-prev-btn" class="action-btn" title="上一首">⏮</button>
+          <button id="music-next-btn" class="action-btn" title="下一首">⏭</button>
+        </div>
+
+        <!-- 卡片浅色/深色切换 -->
+        <button id="theme-toggle-btn" class="glass-pill" style="cursor: pointer;" title="切换日历卡片浅色/深色模式">☀️ 浅色日历卡</button>
+
+        <!-- 全屏沉浸按钮 -->
+        <button id="fullscreen-btn" class="glass-pill icon-btn" style="cursor: pointer;" title="进入全屏自习投屏 (快捷键: F)">⛶</button>
+      </div>
+    </header>
+
+    <!-- 3.2 中心主视觉区域：独立祝金榜题名 + 主标题 + 3D 日历翻页钟 -->
+    <main class="main-stage">
+      <!-- 独立无边框「祝金榜题名」铭牌 -->
+      <div class="blessing-text-standalone">
+        <span class="blessing-symbol">✦</span> 祝 金 榜 题 名 <span class="blessing-symbol">✦</span>
+      </div>
+
+      <!-- 主标题与超大年份：距离 2027 高考仅剩 -->
+      <div class="countdown-header">
+        <span class="countdown-prefix">距离</span>
+        <span id="year-giant" class="countdown-year-giant">2027</span>
+        <span class="countdown-suffix">高考仅剩</span>
+      </div>
+
+      <!-- 3D 机械日历翻页时钟网格 -->
+      <div id="clock-container" class="flip-clock-grid">
+        <!-- 天 DAYS -->
+        <div class="flip-unit-box">
+          <div id="flip-days" class="flip-unit">
+            <div class="calendar-ring-left"></div>
+            <div class="calendar-ring-right"></div>
+            <div class="card-face upper-face static-upper">00</div>
+            <div class="card-face lower-face static-lower">00</div>
+            <div class="card-face upper-face flap-upper">00</div>
+            <div class="card-face lower-face flap-lower">00</div>
+          </div>
+          <div class="unit-label">天 DAYS</div>
+        </div>
+
+        <!-- 时 HOURS -->
+        <div class="flip-unit-box">
+          <div id="flip-hours" class="flip-unit">
+            <div class="calendar-ring-left"></div>
+            <div class="calendar-ring-right"></div>
+            <div class="card-face upper-face static-upper">00</div>
+            <div class="card-face lower-face static-lower">00</div>
+            <div class="card-face upper-face flap-upper">00</div>
+            <div class="card-face lower-face flap-lower">00</div>
+          </div>
+          <div class="unit-label">时 HOURS</div>
+        </div>
+
+        <!-- 分 MINS -->
+        <div class="flip-unit-box">
+          <div id="flip-mins" class="flip-unit">
+            <div class="calendar-ring-left"></div>
+            <div class="calendar-ring-right"></div>
+            <div class="card-face upper-face static-upper">00</div>
+            <div class="card-face lower-face static-lower">00</div>
+            <div class="card-face upper-face flap-upper">00</div>
+            <div class="card-face lower-face flap-lower">00</div>
+          </div>
+          <div class="unit-label">分 MINS</div>
+        </div>
+
+        <!-- 秒 SECS (金黄强调色) -->
+        <div class="flip-unit-box">
+          <div id="flip-secs" class="flip-unit sec-card">
+            <div class="calendar-ring-left"></div>
+            <div class="calendar-ring-right"></div>
+            <div class="card-face upper-face static-upper">00</div>
+            <div class="card-face lower-face static-lower">00</div>
+            <div class="card-face upper-face flap-upper">00</div>
+            <div class="card-face lower-face flap-lower">00</div>
+          </div>
+          <div class="unit-label sec-label">秒 SECS</div>
+        </div>
+      </div>
+    </main>
+
+    <!-- 3.3 页面正下方居中：无边框励志名言 (Quotes) -->
+    <footer class="site-footer">
+      <div id="quote-box" class="borderless-quote-wrap" title="点击换一句励志金句 (快捷键: Q)">
+        <p id="quote-sentence" class="quote-sentence">“追风赶月莫停留，平芜尽处是春山。”</p>
+        <p id="quote-author" class="quote-author">—— 田维《花未央》 <span class="quote-refresh-hint">↻</span></p>
+      </div>
+    </footer>
+
+  </div>
+
+  <!-- 4. 自定义图床与高级设置模态弹窗 -->
+  <div id="settings-modal" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">个性化与图床设置</h3>
+        <button id="close-settings-btn" class="icon-btn">✕</button>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="custom-wp-url">自定义图床壁纸图片直链 (URL)</label>
+        <input type="url" id="custom-wp-url" class="form-input" placeholder="例如: https://your-image-host.com/wallpaper.jpg">
+        <span style="font-size: 0.72rem; color: #94a3b8; display: block; margin-top: 4px;">
+          支持粘贴路过图床、SM.MS、GitHub+jsDelivr 或任意第三方图床直链。留空则恢复默认多源图床轮播。
+        </span>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="volume-slider">音乐播放音量调节</label>
+        <input type="range" id="volume-slider" min="0" max="1" step="0.05" value="0.5" style="width: 100%; accent-color: #fbbf24;">
+      </div>
+      <div class="form-group" style="font-size: 0.75rem; color: #94a3b8; line-height: 1.6;">
+        <div><b>快捷键提示：</b></div>
+        <div>• <b>Space</b>：播放 / 暂停外链音乐</div>
+        <div>• <b>F</b>：进入 / 退出全屏自习模式</div>
+        <div>• <b>W</b>：切换下一个图床源</div>
+        <div>• <b>Q</b>：更换下方励志名言</div>
+      </div>
+      <button id="save-custom-wp-btn" class="btn-primary">保存设置并应用</button>
+    </div>
+  </div>
+
+  <!-- 引入模块脚本 -->
+  <script src="js/config.js"></script>
+  <script src="js/clock.js"></script>
+  <script src="js/wallpaper.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/quotes.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
